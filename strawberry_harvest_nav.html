@@ -16,10 +16,467 @@
             height: 100vh;
             overflow: hidden;
         }
-        /* --- 以下省略せず全文 --- */
+
+        .strawberry-gradient {
+            background: linear-gradient(135deg, #ff4d6d 0%, #d90429 100%);
+        }
+
+        .berry-shape {
+            border-radius: 3rem;
+        }
+
+        .header-curve {
+            border-bottom-left-radius: 3.5rem;
+            border-bottom-right-radius: 3.5rem;
+        }
+
+        .video-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 3.5rem;
+            border: 8px solid #fff;
+            box-shadow: 0 20px 50px rgba(217, 4, 41, 0.15);
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            box-shadow: 0 0 15px #fff;
+            animation: scan 3s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        @keyframes scan {
+            0% { top: 15%; opacity: 0; }
+            50% { top: 50%; opacity: 1; }
+            100% { top: 85%; opacity: 0; }
+        }
+
+        .btn-pop {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 0 #8d021b;
+        }
+        .btn-pop:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #8d021b;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .camera-berry {
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        /* マップ上のイチゴアニメーション */
+        .map-berry {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+        .map-berry:active {
+            transform: scale(1.4);
+        }
+
+        /* 詳細ポップアップのアニメーション */
+        .pop-up {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 品種ガイドのカードスライド */
+        .guide-scroll {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            gap: 1rem;
+            padding: 0.5rem;
+        }
+        .guide-card {
+            flex: 0 0 85%;
+            scroll-snap-align: center;
+        }
     </style>
 </head>
 <body class="text-gray-800">
-    <!-- ファイル化用：内容はそのまま -->
+
+    <div id="app" class="max-w-md mx-auto h-screen bg-white/80 backdrop-blur-sm shadow-2xl flex flex-col relative overflow-hidden">
+        
+        <!-- Header -->
+        <header class="strawberry-gradient p-6 text-white header-curve shadow-xl z-20 relative">
+            <div class="flex justify-between items-center">
+                <div class="flex flex-col">
+                    <h1 class="text-2xl font-black tracking-tighter flex items-center gap-2">
+                        <span class="drop-shadow-lg">🍓</span> いちごナビ
+                    </h1>
+                    <span class="text-[10px] font-bold opacity-80 ml-1">Harvest Helper v2.0</span>
+                </div>
+                <div id="auth-status" class="text-[9px] bg-white/20 backdrop-blur-md px-3 py-1 rounded-full font-black border border-white/30">
+                    ONLINE
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow p-6 overflow-y-auto no-scrollbar pb-28">
+            
+            <!-- Home View -->
+            <div id="home-view" class="space-y-6">
+                <!-- Status Cards -->
+                <div class="flex gap-4">
+                    <div class="flex-grow bg-white berry-shape p-5 shadow-lg border-b-4 border-red-100 flex flex-col items-center">
+                        <p class="text-[10px] text-red-400 font-black mb-1">本日の収穫高</p>
+                        <div class="flex items-baseline gap-1">
+                            <span id="count-display" class="text-4xl font-black text-red-600">0</span>
+                            <span class="text-sm font-bold text-red-400">粒</span>
+                        </div>
+                    </div>
+                    <div class="w-24 bg-green-50 berry-shape p-5 shadow-lg border-b-4 border-green-100 flex flex-col items-center justify-center">
+                        <span class="text-2xl mb-1">🍃</span>
+                        <p class="text-[9px] font-black text-green-600">同期中</p>
+                    </div>
+                </div>
+
+                <!-- Main Action Button -->
+                <div class="relative group">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-red-500 to-pink-500 rounded-[3.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                    <button onclick="switchView('scan')" class="relative w-full strawberry-gradient btn-pop text-white py-12 berry-shape flex flex-col items-center justify-center gap-4 overflow-hidden">
+                        
+                        <div class="absolute top-2 left-4 opacity-20 text-3xl rotate-12">🍓</div>
+                        <div class="absolute bottom-2 right-4 opacity-20 text-3xl -rotate-12">🍓</div>
+                        
+                        <div class="bg-white/20 p-5 rounded-full shadow-inner relative z-10 camera-berry">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 8C5.89543 8 5 8.89543 5 10V16C5 17.1046 5.89543 18 7 18H17C18.1046 18 19 17.1046 19 16V10C19 8.89543 18.1046 8 17 8H15.5C15.15 8 14.85 7.8 14.65 7.5L13.85 6.3C13.5 5.8 13 5.5 12.4 5.5H11.6C11 5.5 10.5 5.8 10.15 6.3L9.35 7.5C9.15 7.8 8.85 8 8.5 8H7Z" fill="white"/>
+                                <circle cx="12" cy="13" r="3.5" fill="#d90429" stroke="white" stroke-width="1.5"/>
+                                <path d="M10 6C10.5 4.5 12 4 12 4C12 4 13.5 4.5 14 6" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="13.5" cy="11.5" r="0.8" fill="white"/>
+                            </svg>
+                        </div>
+
+                        <div class="text-center z-10">
+                            <span class="text-2xl font-black tracking-widest block drop-shadow-md">判定カメラ起動</span>
+                            <span class="text-[10px] font-bold opacity-80 uppercase mt-1 inline-block">Tap to Scan Strawberry</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Map Area -->
+                <div class="bg-white berry-shape p-6 shadow-xl border border-red-50 relative">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-black text-red-500 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            エリア熟度分布
+                        </h3>
+                        <span class="text-[9px] font-bold text-gray-400">アイコンをタップ!</span>
+                    </div>
+                    <div class="aspect-video bg-red-50/50 rounded-3xl border-2 border-dashed border-red-100 relative overflow-hidden">
+                        <!-- Map dots as clickable strawberries -->
+                        <div onclick="showDetail('A棟 3番通路', '紅ほっぺ', '熟度 90% (収穫期)')" class="map-berry absolute" style="top:25%; left:20%; font-size: 1.5rem;">🍓</div>
+                        <div onclick="showDetail('B棟 1番通路', 'とちおとめ', '熟度 60% (明日以降)')" class="map-berry absolute" style="top:65%; left:45%; font-size: 1.2rem; filter: saturate(0.5);">🍓</div>
+                        <div onclick="showDetail('A棟 12番通路', '紅ほっぺ', '熟度 95% (即収穫!)')" class="map-berry absolute" style="top:35%; left:75%; font-size: 1.6rem;">🍓</div>
+                        <div onclick="showDetail('C棟 5番通路', '章姫', '熟度 30% (未熟)')" class="map-berry absolute" style="top:15%; left:60%; font-size: 1.1rem; filter: grayscale(0.8);">🍓</div>
+                    </div>
+
+                    <!-- Detail Pop-up -->
+                    <div id="map-detail" class="pop-up absolute inset-x-6 bottom-6 bg-white rounded-3xl shadow-2xl border-2 border-red-500 p-4 translate-y-full opacity-0 pointer-events-none z-40">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl">🏠</span>
+                                <div>
+                                    <p id="detail-house" class="text-xs font-black text-red-400 uppercase tracking-tighter">--</p>
+                                    <p id="detail-variety" class="text-lg font-black text-gray-800">--</p>
+                                    <p id="detail-status" class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full inline-block mt-1">--</p>
+                                </div>
+                            </div>
+                            <button onclick="hideDetail()" class="text-gray-300 hover:text-red-500 p-1">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scan View -->
+            <div id="scan-view" class="hidden h-full flex flex-col space-y-4">
+                <div class="flex justify-between items-center">
+                    <button onclick="switchView('home')" class="bg-white text-red-500 font-black px-6 py-2 rounded-full shadow-md border border-red-50 flex items-center gap-2 text-sm">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> 戻る
+                    </button>
+                    <div class="bg-red-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
+                        AI ANALYZING...
+                    </div>
+                </div>
+
+                <div class="video-container flex-grow">
+                    <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <div class="scan-line"></div>
+                    
+                    <div id="detection-result" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur px-10 py-4 rounded-full shadow-2xl border-4 border-red-500 min-w-[220px] text-center">
+                        <p class="text-[9px] font-black text-red-300 uppercase mb-1">Strawberry Status</p>
+                        <span id="result-label" class="text-2xl font-black text-red-600">スキャン中...</span>
+                    </div>
+                </div>
+
+                <button id="capture-btn" class="w-full strawberry-gradient btn-pop text-white py-6 berry-shape font-black text-xl flex items-center justify-center gap-3">
+                    <span class="text-3xl">🍓</span> 収穫を記録
+                </button>
+            </div>
+
+            <!-- History View -->
+            <div id="history-view" class="hidden space-y-6">
+                <!-- 品種ガイドセクション -->
+                <section>
+                    <h3 class="text-sm font-black text-red-500 mb-3 flex items-center gap-2 px-2">
+                        <span>📖</span> いちご品種ガイド
+                    </h3>
+                    <div class="guide-scroll no-scrollbar">
+                        <!-- 紅ほっぺ -->
+                        <div class="guide-card bg-white p-4 rounded-[2.5rem] shadow-md border border-red-50 flex flex-col items-center">
+                            <span class="text-4xl mb-2">🍓</span>
+                            <h4 class="font-black text-gray-800">紅ほっぺ</h4>
+                            <p class="text-[9px] text-red-400 font-bold mb-2 tracking-widest">Beni-hoppe</p>
+                            <p class="text-[10px] text-center text-gray-500 leading-relaxed font-bold">
+                                甘みと酸味のバランスが抜群。<br>コクのある深い味わいが特徴です。
+                            </p>
+                        </div>
+                        <!-- 章姫 -->
+                        <div class="guide-card bg-white p-4 rounded-[2.5rem] shadow-md border border-red-50 flex flex-col items-center">
+                            <span class="text-4xl mb-2">🍓</span>
+                            <h4 class="font-black text-gray-800">章姫</h4>
+                            <p class="text-[9px] text-pink-400 font-bold mb-2 tracking-widest">Akihime</p>
+                            <p class="text-[10px] text-center text-gray-500 leading-relaxed font-bold">
+                                酸味が少なく、甘みが強い。<br>長めの形が特徴で果肉が柔らかい。
+                            </p>
+                        </div>
+                        <!-- とちおとめ -->
+                        <div class="guide-card bg-white p-4 rounded-[2.5rem] shadow-md border border-red-50 flex flex-col items-center">
+                            <span class="text-4xl mb-2">🍓</span>
+                            <h4 class="font-black text-gray-800">とちおとめ</h4>
+                            <p class="text-[9px] text-orange-400 font-bold mb-2 tracking-widest">Tochi-otome</p>
+                            <p class="text-[10px] text-center text-gray-500 leading-relaxed font-bold">
+                                香り高く、果実がしっかり。<br>日持ちが良く、鮮やかな赤色が魅力。
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 収穫履歴リスト -->
+                <section class="space-y-4">
+                    <div class="bg-red-500 p-6 berry-shape text-white shadow-lg flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-black">収穫図鑑</h2>
+                            <p class="text-[10px] opacity-80 font-bold">Your Harvest Collection</p>
+                        </div>
+                        <div id="history-stats" class="bg-white text-red-500 font-black px-4 py-2 rounded-2xl shadow-inner">
+                            0 粒
+                        </div>
+                    </div>
+                    <div id="history-list" class="space-y-3"></div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Navigation -->
+        <nav class="absolute bottom-0 w-full bg-white/90 backdrop-blur-md border-t-2 border-red-50 px-8 py-5 flex justify-around items-center z-30 rounded-t-[3rem] shadow-[0_-10px_40px_rgba(217,4,41,0.05)]">
+            <button onclick="switchView('home')" id="nav-home" class="flex flex-col items-center gap-1 text-red-500 scale-110 transition-all">
+                <div class="p-2 rounded-2xl bg-red-50">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 8 7v11a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1V10l8-7z"/></svg>
+                </div>
+                <span class="text-[10px] font-black">ホーム</span>
+            </button>
+            <button onclick="switchView('scan')" id="nav-scan" class="flex flex-col items-center gap-1 text-gray-300">
+                <div class="p-2 rounded-2xl">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <rect x="3" y="8" width="18" height="12" rx="2" stroke-width="3"/>
+                        <path d="M9 8V6a3 3 0 0 1 6 0v2" stroke-width="2"/>
+                        <circle cx="12" cy="14" r="2" stroke-width="2"/>
+                    </svg>
+                </div>
+                <span class="text-[10px] font-black">判定</span>
+            </button>
+            <button onclick="switchView('history')" id="nav-history" class="flex flex-col items-center gap-1 text-gray-300">
+                <div class="p-2 rounded-2xl">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M8 7h6M8 11h8"/></svg>
+                </div>
+                <span class="text-[10px] font-black">図鑑</span>
+            </button>
+        </nav>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-50 opacity-0 pointer-events-none transition-all duration-500 z-50 bg-white p-8 berry-shape border-8 border-red-500 shadow-2xl text-center">
+            <span class="text-6xl block mb-4 animate-bounce">🍓✨</span>
+            <p id="toast-text" class="text-xl font-black text-red-600">ナイス収穫！</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'strawberry-harvest-app';
+
+        let currentUser = null;
+        let currentStatus = "収穫最適";
+        let stream = null;
+
+        const countDisplay = document.getElementById('count-display');
+        const historyList = document.getElementById('history-list');
+        const statsDisplay = document.getElementById('history-stats');
+        const resultLabel = document.getElementById('result-label');
+
+        async function initAuth() {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                subscribeToHarvests(user.uid);
+            }
+        });
+
+        function subscribeToHarvests(userId) {
+            const harvestsCol = collection(db, 'artifacts', appId, 'users', userId, 'harvests');
+            onSnapshot(query(harvestsCol), (snapshot) => {
+                const harvests = [];
+                snapshot.forEach(doc => harvests.push({ id: doc.id, ...doc.data() }));
+                harvests.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                updateUI(harvests);
+            }, (err) => console.error(err));
+        }
+
+        async function saveHarvest() {
+            if (!currentUser) return;
+            const btn = document.getElementById('capture-btn');
+            btn.disabled = true;
+            try {
+                const harvestsCol = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'harvests');
+                // ランダムな品種で保存（デモ用）
+                const varieties = ["紅ほっぺ", "章姫", "とちおとめ"];
+                const randomVariety = varieties[Math.floor(Math.random() * varieties.length)];
+                
+                await addDoc(harvestsCol, {
+                    variety: randomVariety,
+                    status: currentStatus,
+                    createdAt: serverTimestamp()
+                });
+                showToast("収穫を記録したよ！");
+            } catch (error) {
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function updateUI(harvests) {
+            countDisplay.innerText = harvests.length;
+            statsDisplay.innerText = `${harvests.length} 粒`;
+            if (harvests.length > 0) {
+                historyList.innerHTML = harvests.map(item => {
+                    const date = item.createdAt ? new Date(item.createdAt.seconds * 1000) : new Date();
+                    const isOptimal = item.status === '収穫最適';
+                    return `
+                        <div class="bg-white p-4 berry-shape shadow-md flex justify-between items-center border-l-8 ${isOptimal ? 'border-red-500' : 'border-orange-400'}">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">🍓</span>
+                                <div>
+                                    <p class="font-black text-sm text-gray-800">${item.variety}</p>
+                                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">
+                                        ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="text-[9px] font-black px-3 py-1 rounded-full ${isOptimal ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}">
+                                ${item.status}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                historyList.innerHTML = `<div class="py-20 text-center opacity-20"><span class="text-6xl">🍓</span><p class="font-black mt-4">まだ記録がありません</p></div>`;
+            }
+        }
+
+        async function initCamera() {
+            const video = document.getElementById('webcam');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+                video.srcObject = stream;
+            } catch (err) { console.error(err); }
+        }
+
+        window.switchView = function(viewName) {
+            ['home', 'scan', 'history'].forEach(v => {
+                document.getElementById(v + '-view').classList.add('hidden');
+                document.getElementById('nav-' + v).classList.remove('text-red-500', 'scale-110');
+                document.getElementById('nav-' + v).classList.add('text-gray-300');
+                document.getElementById('nav-' + v).querySelector('div').classList.remove('bg-red-50');
+            });
+            document.getElementById(viewName + '-view').classList.remove('hidden');
+            document.getElementById('nav-' + viewName).classList.add('text-red-500', 'scale-110');
+            document.getElementById('nav-' + viewName).classList.remove('text-gray-300');
+            document.getElementById('nav-' + viewName).querySelector('div').classList.add('bg-red-50');
+
+            if (viewName === 'scan') {
+                initCamera();
+                startDetection();
+            } else if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+        }
+
+        window.showDetail = function(house, variety, status) {
+            const popup = document.getElementById('map-detail');
+            document.getElementById('detail-house').innerText = house;
+            document.getElementById('detail-variety').innerText = variety;
+            document.getElementById('detail-status').innerText = status;
+            
+            popup.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+            popup.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+        }
+
+        window.hideDetail = function() {
+            const popup = document.getElementById('map-detail');
+            popup.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+            popup.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+        }
+
+        function startDetection() {
+            const statuses = ["収穫最適", "もう少し", "まだ青い"];
+            let i = 0;
+            const timer = setInterval(() => {
+                if (document.getElementById('scan-view').classList.contains('hidden')) return clearInterval(timer);
+                currentStatus = statuses[i % 3];
+                resultLabel.innerText = currentStatus;
+                i++;
+            }, 2500);
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = text;
+            toast.classList.remove('opacity-0', 'scale-50');
+            toast.classList.add('opacity-100', 'scale-100');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-50');
+                toast.classList.remove('opacity-100', 'scale-100');
+            }, 2000);
+        }
+
+        document.getElementById('capture-btn').addEventListener('click', saveHarvest);
+        window.addEventListener('load', initAuth);
+    </script>
 </body>
 </html>
